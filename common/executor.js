@@ -30,6 +30,7 @@ module.exports = function (callback) {
       else
         logger.info(who, 'Successfully processed message');
 
+      bag.consolesAdapter.closeGrp(!err);
       callback(err);
     }
   );
@@ -61,7 +62,7 @@ function _readTasks(bag, next) {
   var who = bag.who + '|' + _readTasks.name;
   logger.verbose(who, 'Inside');
 
-  bag.consolesAdapter.openGrp('Preparing tasks');
+  bag.consolesAdapter.openGrp('Tasks: Preparing');
   bag.consolesAdapter.openCmd('Reading job steps');
   fs.readFile(global.config.jobStepsPath, 'utf8',
     function (err, data) {
@@ -127,6 +128,7 @@ function _setSuccessStatus(bag, next) {
   var who = bag.who + '|' + _setSuccessStatus.name;
   logger.verbose(who, 'Inside');
 
+  bag.consolesAdapter.openGrp('Tasks: Finishing');
   bag.consolesAdapter.openCmd('Setting status to success');
   fs.writeFile(global.config.jobStatusPath, '4002',
     function (err) {
