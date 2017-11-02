@@ -1,4 +1,5 @@
 'use strict';
+
 var _ = require('underscore');
 var util = require('util');
 var fs = require('fs');

@@ -52,6 +52,8 @@ function setupConfig() {
     path.join(global.config.statusDir, 'job.status');
   global.config.jobENVPath =
     path.join(global.config.statusDir, 'job.env');
+  global.config.jobStepsPath =
+    path.join(global.config.statusDir, 'job.steps.json');
 }
 
 function reqKick() {
