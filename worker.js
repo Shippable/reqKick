@@ -8,14 +8,12 @@ module.exports = function () {
   var who = util.format('%s|%s', global.who, 'worker');
   logger.verbose(who, 'Inside');
 
-  // Immediately check hand-off in case the service restarts.
-  var opts = {
+  var pollerOpts = {
     filePath: global.config.jobWhoPath,
     intervalMS: global.config.pollIntervalMS,
     content: 'reqKick'
   };
-
-  poller(opts,
+  poller(pollerOpts,
     function (err, handoffPoll) {
       if (err) {
         logger.warn('Failed to setup poller:', err);
