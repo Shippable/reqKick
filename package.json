@@ -17,6 +17,9 @@
     "underscore": "1.8.3",
     "winston": "2.4.0"
   },
+  "devDependencies": {
+    "jshint": "2.9.5"
+  },
   "jshintConfig": {
     "node": true,
     "undef": true,
