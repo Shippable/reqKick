@@ -42,11 +42,6 @@
     "globalstrict": true,
     "maxcomplexity": 20,
     "maxstatements": 50,
-    "predef": [
-      "logger",
-      "util",
-      "async",
-      "_"
-    ]
+    "predef": ["logger", "util", "async", "_"]
   }
 }
