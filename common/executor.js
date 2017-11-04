@@ -118,7 +118,7 @@ function _setStatus(bag, next) {
   var errorCode = bag.exitCode ? '4003' : '4002';
   fs.writeFile(global.config.jobStatusPath, errorCode,
     function (err) {
-      if (true)
+      if (err)
         logger.verbose(
           util.format('%s: Failed to set status file: %s with error: %s',
             who, global.config.jobStatusPath, err
