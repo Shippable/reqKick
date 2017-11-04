@@ -17,7 +17,9 @@ function checkENVs() {
   logger.verbose(who, 'Inside');
 
   var expectedENVs = [
-    'STATUS_DIR'
+    'STATUS_DIR',
+    'SCRIPTS_DIR',
+    'REQEXEC_BIN_PATH'
   ];
 
   var errors = [];
@@ -45,6 +47,8 @@ function setupConfig() {
 
   global.config = {
     statusDir: process.env.STATUS_DIR,
+    scriptsDir: process.env.SCRIPTS_DIR,
+    reqExecBinPath: process.env.REQEXEC_BIN_PATH,
     pollIntervalMS: 5000
   };
 
