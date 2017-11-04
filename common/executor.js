@@ -3,9 +3,8 @@
 var fs = require('fs');
 var util = require('util');
 var async = require('async');
-var dotenv = require('dotenv');
 var exec = require('child_process').exec;
-var ConsolesAdapter = require('./shippable/ConsolesAdapter.js');
+var path = require('path');
 
 module.exports = function (callback) {
   var who = util.format('%s|common|%s', global.who, 'executor');
@@ -13,13 +12,11 @@ module.exports = function (callback) {
 
   var bag = {
     who: who,
-    consolesAdapter: null,
-    steps: null
+    reqKickScriptNames: null
   };
 
   async.series([
-      _instantiateConsolesAdapter.bind(null, bag),
-      _readTasks.bind(null, bag),
+      _readScripts.bind(null, bag),
       _executeSteps.bind(null, bag),
       _setSuccessStatus.bind(null, bag),
       _setExecutorAsReqProc.bind(null, bag)
@@ -30,59 +27,30 @@ module.exports = function (callback) {
       else
         logger.info(who, 'Successfully processed message');
 
-      bag.consolesAdapter.closeGrp(!err);
       callback(err);
     }
   );
 };
 
-function _instantiateConsolesAdapter(bag, next) {
-  var who = bag.who + '|' + _instantiateConsolesAdapter.name;
+function _readScripts(bag, next) {
+  var who = bag.who + '|' + _readScripts.name;
   logger.verbose(who, 'Inside');
 
-  fs.readFile(global.config.jobENVPath, 'utf8',
-    function (err, data) {
-      if (err) {
-        logger.warn(who, 'Failed to read job ENVs: ', err);
-      } else {
-        var envs = dotenv.parse(data);
-        bag.consolesAdapter = new ConsolesAdapter(
-          envs.SHIPPABLE_API_URL,
-          envs.BUILDER_API_TOKEN,
-          envs.BUILD_JOB_ID
-        );
-      }
-
-      return next(err);
-    }
-  );
-}
-
-function _readTasks(bag, next) {
-  var who = bag.who + '|' + _readTasks.name;
-  logger.verbose(who, 'Inside');
-
-  bag.consolesAdapter.openGrp('Tasks: Preparing');
-  bag.consolesAdapter.openCmd('Reading job steps');
   fs.readFile(global.config.jobStepsPath, 'utf8',
     function (err, data) {
       if (err) {
-        bag.consolesAdapter.publishMsg(
+        logger.error(
           util.format('%s: failed to read job steps: %s',
             who, err
           )
         );
-        bag.consolesAdapter.closeCmd(false);
-        bag.consolesAdapter.closeGrp(false);
       } else {
-        bag.tasks = JSON.parse(data);
-        bag.consolesAdapter.publishMsg(
-          util.format('Read job steps successfully',
+        bag.reqKickScriptNames = JSON.parse(data).reqKick;
+        logger.verbose(
+          util.format(who, 'Read scripts successfully',
             global.config.jobStatusPath
           )
         );
-        bag.consolesAdapter.closeCmd(true);
-        bag.consolesAdapter.closeGrp(true);
       }
 
       return next(err);
@@ -94,27 +62,17 @@ function _executeSteps(bag, next) {
   var who = bag.who + '|' + _executeSteps.name;
   logger.verbose(who, 'Inside');
 
-  async.eachSeries(bag.tasks,
-    function (task, nextTask) {
+  async.eachSeries(bag.reqKickScriptNames,
+    function (scriptName, nextScriptName) {
+      var execCmd = util.format('%s %s %s',
+        global.config.reqExecBinPath,
+        path.join(global.config.scriptsDir, scriptName),
+        global.config.jobENVPath
+      );
 
-      async.eachSeries(task.reqKick.steps,
-        function (step, nextStep) {
-          bag.consolesAdapter.openGrp(util.format('%s: %s',
-            task.reqKick.name, step.group)
-          );
-          bag.consolesAdapter.openCmd(step.script);
-          exec(step.script,
-            function (err, stdout, stderr) {
-              bag.consolesAdapter.publishMsg(stdout);
-              bag.consolesAdapter.publishMsg(stderr);
-              bag.consolesAdapter.closeGrp(!err);
-              bag.consolesAdapter.closeCmd(!err);
-              return nextStep(err);
-            }
-          );
-        },
+      exec(execCmd,
         function (err) {
-          return nextTask(err);
+          return nextScriptName(err);
         }
       );
     },
@@ -128,25 +86,20 @@ function _setSuccessStatus(bag, next) {
   var who = bag.who + '|' + _setSuccessStatus.name;
   logger.verbose(who, 'Inside');
 
-  bag.consolesAdapter.openGrp('Tasks: Finishing');
-  bag.consolesAdapter.openCmd('Setting status to success');
   fs.writeFile(global.config.jobStatusPath, '4002',
     function (err) {
-      if (err) {
-        bag.consolesAdapter.publishMsg(
+      if (err)
+        logger.verbose(
           util.format('%s: failed to set status: %s',
             who, err
           )
         );
-        bag.consolesAdapter.closeCmd(false);
-      } else {
-        bag.consolesAdapter.publishMsg(
-          util.format('Updated %s with status success',
+      else
+        logger.verbose(
+          util.format(who, 'Updated %s with status success',
             global.config.jobStatusPath
           )
         );
-        bag.consolesAdapter.closeCmd(true);
-      }
 
       return next(err);
     }
@@ -157,24 +110,20 @@ function _setExecutorAsReqProc(bag, next) {
   var who = bag.who + '|' + _setExecutorAsReqProc.name;
   logger.verbose(who, 'Inside');
 
-  bag.consolesAdapter.openCmd('Setting executor as reqProc');
   fs.writeFile(global.config.jobWhoPath, 'reqProc\n',
     function (err) {
-      if (err) {
-        bag.consolesAdapter.publishMsg(
+      if (err)
+        logger.verbose(
           util.format('%s: failed to set executor: %s',
             who, err
           )
         );
-        bag.consolesAdapter.closeCmd(false);
-      } else {
-        bag.consolesAdapter.publishMsg(
-          util.format('Updated %s with executor reqProc',
+      else
+        logger.verbose(
+          util.format(who, 'Updated %s with executor reqProc',
             global.config.jobWhoPath
           )
         );
-        bag.consolesAdapter.closeCmd(true);
-      }
 
       return next(err);
     }
