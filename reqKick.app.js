@@ -2,6 +2,7 @@
 
 var worker = require('./worker.js');
 var path = require('path');
+var util = require('util');
 var _ = require('underscore');
 
 function setupGlobals() {
