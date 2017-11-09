@@ -24,6 +24,8 @@ module.exports = function (opts, callback) {
   // Setup event emitter
   var poll = new EventEmitter();
   poll.watch = function () {
+    if (poll.interval) poll.stop();
+
     poll.interval = setInterval(
       function () {
         fs.readFile(opts.filePath, 'utf8',

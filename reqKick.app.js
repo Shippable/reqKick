@@ -59,6 +59,9 @@ function setupConfig() {
     global.config.statusDir,
     'job.steps.json'
   );
+  // TODO: This should come from the steps file.
+  global.config.jobKillPath =
+    path.join(global.config.scriptsDir, 'kill_task.sh');
 }
 
 function reqKick() {

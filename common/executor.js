@@ -1,9 +1,11 @@
 'use strict';
 
+var _ = require('underscore');
 var async = require('async');
 var exec = require('child_process').exec;
 var fs = require('fs');
 var path = require('path');
+var poller = require('./poller.js');
 var util = require('util');
 
 module.exports = function (callback) {
@@ -13,17 +15,24 @@ module.exports = function (callback) {
   var bag = {
     who: who,
     reqKickScriptNames: null,
-    exitCode: 0
+    exitCode: 0,
+    statusPoll: null,
+    skipStatusUpdate: false
   };
 
   async.series(
     [
       _readScripts.bind(null, bag),
+      _pollStatus.bind(null, bag),
       _executeSteps.bind(null, bag),
+      _getStatus.bind(null, bag),
       _setStatus.bind(null, bag),
       _setExecutorAsReqProc.bind(null, bag)
     ],
     function () {
+      if (bag.statusPoll)
+        bag.statusPoll.stop();
+
       if (bag.exitCode)
         logger.error(
           util.format('%s: Failed to process message with exit code: %s',
@@ -73,6 +82,64 @@ function _readScripts(bag, next) {
   );
 }
 
+function _pollStatus(bag, next) {
+  if (bag.exitCode) return next();
+
+  var who = bag.who + '|' + _executeSteps.name;
+  logger.verbose(who, 'Inside');
+
+  var pollerOpts = {
+    filePath: global.config.jobStatusPath,
+    intervalMS: global.config.pollIntervalMS,
+    content: 'cancelled'
+  };
+
+  poller(pollerOpts,
+    function (err, statusPoll) {
+      bag.statusPoll = statusPoll;
+      if (err) {
+        bag.exitCode = 1;
+        logger.error(
+          util.format('%s: Failed to status poller with error: %s', who, err)
+        );
+      } else {
+        statusPoll.on('match', function () {
+          logger.verbose(
+            util.format(
+              '%s: Received cancelled status. Executing kill script %s',
+              who, global.config.jobKillPath
+            )
+          );
+          statusPoll.stop();
+          var execCmd = util.format(
+            '%s %s %s',
+            global.config.reqExecBinPath,
+            global.config.jobKillPath,
+            global.config.jobENVPath
+          );
+          exec(execCmd,
+            function (err) {
+              if (err)
+                logger.warn(
+                  util.format('%s: Execution of %s failed with error: %s',
+                    who, execCmd, err
+                  )
+                );
+              else
+                logger.warn(
+                  util.format('%s: Execution of kill script %s succeded',
+                    who, execCmd
+                  )
+                );
+            }
+          );
+        });
+      }
+      return next();
+    }
+  );
+}
+
 function _executeSteps(bag, next) {
   if (bag.exitCode) return next();
 
@@ -110,12 +177,43 @@ function _executeSteps(bag, next) {
   );
 }
 
+function _getStatus(bag, next) {
+  var who = bag.who + '|' + _getStatus.name;
+  logger.verbose(who, 'Inside');
+
+  fs.readFile(global.config.jobStatusPath,
+    function (err, data) {
+      if (err)
+        logger.verbose(
+          util.format('%s: Failed to get status file: %s with error: %s',
+            who, global.config.jobStatusPath, err
+          )
+        );
+      else {
+        logger.verbose(
+          util.format('%s: Found status file: %s with content %s',
+            who, global.config.jobStatusPath, data
+          )
+        );
+
+        // If a status has already been set due to cancel/timeout, skip
+        // status update.
+        if (!_.isEmpty(data))
+          bag.skipStatusUpdate = true;
+      }
+
+      return next(err);
+    }
+  );
+}
+
 function _setStatus(bag, next) {
+  if (bag.skipStatusUpdate) return next();
+
   var who = bag.who + '|' + _setStatus.name;
   logger.verbose(who, 'Inside');
 
-  // TODO: Remove this once reqProc can handle exit codes.
-  var errorCode = bag.exitCode ? '4003' : '4002';
+  var errorCode = bag.exitCode ? 'failure' : 'success';
   fs.writeFile(global.config.jobStatusPath, errorCode,
     function (err) {
       if (err)
