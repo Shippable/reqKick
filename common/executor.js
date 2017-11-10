@@ -2,10 +2,10 @@
 
 var _ = require('underscore');
 var async = require('async');
-var exec = require('child_process').exec;
 var fs = require('fs');
 var path = require('path');
 var poller = require('./poller.js');
+var spawn = require('child_process').spawn;
 var util = require('util');
 
 module.exports = function (callback) {
@@ -13,11 +13,12 @@ module.exports = function (callback) {
   logger.info(who, 'Inside');
 
   var bag = {
-    who: who,
-    reqKickScriptNames: null,
+    currentProcess: null,
     exitCode: 0,
+    reqKickScriptNames: [],
+    skipStatusUpdate: false,
     statusPoll: null,
-    skipStatusUpdate: false
+    who: who
   };
 
   async.series(
@@ -30,9 +31,6 @@ module.exports = function (callback) {
       _setExecutorAsReqProc.bind(null, bag)
     ],
     function () {
-      if (bag.statusPoll)
-        bag.statusPoll.stop();
-
       if (bag.exitCode)
         logger.error(
           util.format('%s: Failed to process message with exit code: %s',
@@ -85,7 +83,7 @@ function _readScripts(bag, next) {
 function _pollStatus(bag, next) {
   if (bag.exitCode) return next();
 
-  var who = bag.who + '|' + _executeSteps.name;
+  var who = bag.who + '|' + _pollStatus.name;
   logger.verbose(who, 'Inside');
 
   var pollerOpts = {
@@ -104,35 +102,17 @@ function _pollStatus(bag, next) {
         );
       } else {
         statusPoll.on('match', function () {
-          logger.verbose(
-            util.format(
-              '%s: Received cancelled status. Executing kill script %s',
-              who, global.config.jobKillPath
-            )
-          );
-          statusPoll.stop();
-          var execCmd = util.format(
-            '%s %s %s',
-            global.config.reqExecBinPath,
-            global.config.jobKillPath,
-            global.config.jobENVPath
-          );
-          exec(execCmd,
-            function (err) {
-              if (err)
-                logger.warn(
-                  util.format('%s: Execution of %s failed with error: %s',
-                    who, execCmd, err
-                  )
-                );
-              else
-                logger.warn(
-                  util.format('%s: Execution of kill script %s succeded',
-                    who, execCmd
-                  )
-                );
+          logger.verbose(util.format('%s: Received cancelled status', who));
+          if (bag.currentProcess) {
+            try {
+              bag.currentProcess.kill();
+            } catch (err) {
+              logger.warn(
+                util.format('%s: Failed to kill process with pid: %s' +
+                ' with error: %s', who, bag.currentProcess.pid, err)
+              );
             }
-          );
+          }
         });
       }
       return next();
@@ -149,27 +129,25 @@ function _executeSteps(bag, next) {
   async.eachSeries(
     bag.reqKickScriptNames,
     function (scriptName, nextScriptName) {
-      var execCmd = util.format(
-        '%s %s %s',
-        global.config.reqExecBinPath,
+      bag.currentProcess = spawn(global.config.reqExecBinPath, [
         path.join(global.config.scriptsDir, scriptName),
         global.config.jobENVPath
-      );
+      ]);
 
-      logger.verbose(util.format('%s: Executing: %s', who, execCmd));
-      exec(execCmd,
-        function (err) {
-          if (err)
-            logger.warn(
-              util.format('%s: Execution of %s failed with error: %s',
-                who, execCmd, err
-              )
-            );
-          return nextScriptName(err);
+      bag.currentProcess.on('exit',
+        function (exitCode, signal) {
+          bag.currentProcess = null;
+          logger.verbose(util.format('%s: Script %s exited with exit code: ' +
+            '%s and signal: %s', who, scriptName, exitCode, signal)
+          );
+          return nextScriptName(exitCode || signal);
         }
       );
     },
     function (err) {
+      // The task has completed at this point, we don't want the status poller
+      // to run anymore.
+      bag.statusPoll.stop();
       if (err)
         bag.exitCode = 1;
       return next();
@@ -181,7 +159,7 @@ function _getStatus(bag, next) {
   var who = bag.who + '|' + _getStatus.name;
   logger.verbose(who, 'Inside');
 
-  fs.readFile(global.config.jobStatusPath,
+  fs.readFile(global.config.jobStatusPath, 'utf8',
     function (err, data) {
       if (err)
         logger.verbose(
@@ -192,7 +170,7 @@ function _getStatus(bag, next) {
       else {
         logger.verbose(
           util.format('%s: Found status file: %s with content %s',
-            who, global.config.jobStatusPath, data
+            who, global.config.jobStatusPath, JSON.stringify(data)
           )
         );
 
