@@ -8,8 +8,19 @@ var worker = require('./worker.js');
 function setupGlobals() {
   global.who = 'reqKick|reqKick.app.js';
   global.logger = require('./common/logger.js')();
-  // TODO: Add an ENV for this.
-  logger.level = 'debug';
+
+  var runMode = process.env.RUN_MODE;
+  var logLevel;
+
+  if (runMode === 'dev')
+    logLevel = 'debug';
+  else if (runMode === 'beta')
+    logLevel = 'verbose';
+  else if (runMode === 'production')
+    logLevel = 'warn';
+
+  logger.level = logLevel;
+  console.log('mylog logLevel is ' + logLevel);
 }
 
 function checkENVs() {
