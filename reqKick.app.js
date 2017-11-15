@@ -20,7 +20,6 @@ function setupGlobals() {
     logLevel = 'warn';
 
   logger.level = logLevel;
-  console.log('mylog logLevel is ' + logLevel);
 }
 
 function checkENVs() {
