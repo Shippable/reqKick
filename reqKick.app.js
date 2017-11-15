@@ -10,7 +10,8 @@ function setupGlobals() {
   global.logger = require('./common/logger.js')();
 
   var runMode = process.env.RUN_MODE;
-  var logLevel;
+  // default log level is warn
+  var logLevel = 'warn';
 
   if (runMode === 'dev')
     logLevel = 'debug';
