@@ -23,6 +23,7 @@ module.exports = function (callback) {
 
   async.series(
     [
+      _readStepsPath.bind(null, bag),
       _readScripts.bind(null, bag),
       _pollStatus.bind(null, bag),
       _executeSteps.bind(null, bag),
@@ -45,8 +46,8 @@ module.exports = function (callback) {
   );
 };
 
-function _readScripts(bag, next) {
-  var who = bag.who + '|' + _readScripts.name;
+function _readStepsPath(bag, next) {
+  var who = bag.who + '|' + _readStepsPath.name;
   logger.verbose(who, 'Inside');
 
   fs.readFile(global.config.jobStepsPath, 'utf8',
@@ -59,18 +60,39 @@ function _readScripts(bag, next) {
           )
         );
       } else {
+        bag.stepsFile = data;
+      }
+      return next();
+    }
+  );
+}
+
+function _readScripts(bag, next) {
+  if (bag.exitCode) return next();
+
+  var who = bag.who + '|' + _readScripts.name;
+  logger.verbose(who, 'Inside');
+
+  fs.readFile(path.join(global.config.statusDir,bag.stepsFile), 'utf8',
+    function (err, data) {
+      if (err) {
+        bag.exitCode = 1;
+        logger.error(
+          util.format('%s: Failed to read file: %s with error: %s',
+            who, bag.stepsFile, bag.exitCode
+          )
+        );
+      } else {
         try {
           bag.reqKickScriptNames = JSON.parse(data).reqKick;
           logger.verbose(
-            util.format('%s: Parsed file: %s successfully',
-              who, global.config.jobStatusPath
-            )
+            util.format('%s: Parsed file: %s successfully', who, bag.stepsFile)
           );
         } catch (err) {
           bag.exitCode = 1;
           logger.error(
             util.format('%s: Failed to parse JSON file: %s with error: %s',
-              who, global.config.jobStepsPath, err
+              who, bag.stepsFile, err
             )
           );
         }

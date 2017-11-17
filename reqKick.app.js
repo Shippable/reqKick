@@ -68,7 +68,7 @@ function setupConfig() {
   global.config.jobENVPath = path.join(global.config.statusDir, 'job.env');
   global.config.jobStepsPath = path.join(
     global.config.statusDir,
-    'job.steps.json'
+    'job.steps.path'
   );
 }
 
