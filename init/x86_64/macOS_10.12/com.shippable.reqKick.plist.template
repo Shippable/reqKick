@@ -7,7 +7,7 @@
 
         <key>ProgramArguments</key>
         <array>
-            <string>node</string>
+            <string>{{NODE_PATH}}</string>
             <string>{{REQKICK_DIR}}/reqKick.app.js</string>
         </array>
 
