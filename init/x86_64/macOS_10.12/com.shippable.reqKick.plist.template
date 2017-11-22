@@ -7,7 +7,7 @@
 
         <key>ProgramArguments</key>
         <array>
-            <string>/usr/local/bin/node /var/lib/shippable/{{UUID}}/reqKick/reqKick.app.js</string>
+            <string>/usr/local/bin/node {{REQKICK_DIR}}/reqKick.app.js</string>
         </array>
 
         <key>Nice</key>
@@ -29,9 +29,9 @@
         </dict>
 
         <key>StandardErrorPath</key>
-        <string>{{LOG_DIR}}/reqKick_{{UUID}}.err</string>
+        <string>{{REQKICK_DIR}}/reqKick_{{UUID}}.err</string>
 
         <key>StandardOutPath</key>
-        <string>{{LOG_DIR}}/reqKick_{{UUID}}.out</string>
+        <string>{{REQKICK_DIR}}/reqKick_{{UUID}}.out</string>
     </dict>
 </plist>
