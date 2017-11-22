@@ -7,7 +7,7 @@
 
         <key>ProgramArguments</key>
         <array>
-            <string>/usr/local/bin/node {{REQKICK_DIR}}/reqKick.app.js</string>
+            <string>node {{REQKICK_DIR}}/reqKick.app.js</string>
         </array>
 
         <key>Nice</key>
