@@ -17,6 +17,9 @@
         <key>RunAtLoad</key>
         <true/>
 
+        <key>UserName</key>
+        <string>{{USER_NAME}}</string>
+
         <key>EnvironmentVariables</key>
         <dict>
             <key>STATUS_DIR</key>
