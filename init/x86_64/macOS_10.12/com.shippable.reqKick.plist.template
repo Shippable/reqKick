@@ -30,6 +30,8 @@
             <string>{{REQEXEC_BIN_PATH}}</string>
             <key>RUN_MODE</key>
             <string>{{RUN_MODE}}</string>
+            <key>PATH</key>
+            <string>{{PATH}}</string>
         </dict>
 
         <key>StandardErrorPath</key>
