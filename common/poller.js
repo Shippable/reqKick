@@ -31,7 +31,7 @@ module.exports = function (opts, callback) {
         fs.readFile(opts.filePath, 'utf8',
           function (err, data) {
             if (err)
-              logger.warn(
+              logger.verbose(
                 util.format('%s: failed to read file: %s with error: %s',
                   who, opts.filePath, err
                 )
