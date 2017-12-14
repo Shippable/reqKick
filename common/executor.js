@@ -202,9 +202,10 @@ function _executeSteps(bag, next) {
         global.config.jobENVPath
       ]);
 
+      var stdoutMsg = [];
       bag.currentProcess.stdout.on('data',
         function (data) {
-          bag.errors.push(util.format('%s: failed to execute steps: %s',
+          stdoutMsg.push(util.format('%s: failed to execute steps: %s',
               who, data.toString()
             )
           );
@@ -223,6 +224,8 @@ function _executeSteps(bag, next) {
       bag.currentProcess.on('exit',
         function (exitCode, signal) {
           bag.currentProcess = null;
+          if (exitCode || signal)
+            bag.errors = bag.errors.concat(stdoutMsg);
           logger.verbose(util.format('%s: Script %s exited with exit code: ' +
             '%s and signal: %s', who, scriptName, exitCode, signal)
           );
