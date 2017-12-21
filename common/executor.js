@@ -154,7 +154,7 @@ function _pollStatus(bag, next) {
   var pollerOpts = {
     filePath: global.config.jobStatusPath,
     intervalMS: global.config.pollIntervalMS,
-    content: 'cancelled'
+    content: ['cancelled', 'timeout']
   };
 
   poller(pollerOpts,
@@ -169,8 +169,8 @@ function _pollStatus(bag, next) {
           util.format('%s: Failed to status poller with error: %s', who, err)
         );
       } else {
-        statusPoll.on('match', function () {
-          logger.verbose(util.format('%s: Received cancelled status', who));
+        statusPoll.on('match', function (status) {
+          logger.verbose(util.format('%s: Received %s status', who, status));
           if (bag.currentProcess) {
             try {
               bag.currentProcess.kill();

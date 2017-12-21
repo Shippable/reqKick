@@ -30,13 +30,19 @@ module.exports = function (opts, callback) {
       function () {
         fs.readFile(opts.filePath, 'utf8',
           function (err, data) {
-            if (err)
+            if (err) {
               logger.verbose(
                 util.format('%s: failed to read file: %s with error: %s',
                   who, opts.filePath, err
                 )
               );
-            else if (data.trim() === opts.content)
+              return;
+            }
+
+            if (_.isArray(opts.content) &&
+              _.contains(opts.content, data.trim()))
+              poll.emit('match', data.trim());
+            else if (opts.content === data.trim())
               poll.emit('match');
           }
         );
