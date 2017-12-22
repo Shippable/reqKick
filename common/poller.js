@@ -39,10 +39,11 @@ module.exports = function (opts, callback) {
               return;
             }
 
+            var trimmedData = data.trim();
             if (_.isArray(opts.content) &&
-              _.contains(opts.content, data.trim()))
-              poll.emit('match', data.trim());
-            else if (opts.content === data.trim())
+              _.contains(opts.content, trimmedData))
+              poll.emit('match', trimmedData);
+            else if (opts.content === trimmedData)
               poll.emit('match');
           }
         );
