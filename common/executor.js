@@ -17,7 +17,7 @@ module.exports = function (callback) {
   var bag = {
     currentProcess: null,
     exitCode: 0,
-    reqKickScriptNames: [],
+    reqKickSteps: [],
     skipStatusUpdate: false,
     statusPoll: null,
     who: who,
@@ -50,7 +50,6 @@ module.exports = function (callback) {
     }
   );
 };
-
 
 function _instantiateConsolesAdapter(bag, next) {
   var who = bag.who + '|' + _instantiateConsolesAdapter.name;
@@ -122,7 +121,7 @@ function _readScripts(bag, next) {
         );
       } else {
         try {
-          bag.reqKickScriptNames = JSON.parse(data).reqKick;
+          bag.reqKickSteps = JSON.parse(data).reqKick;
           logger.verbose(
             util.format('%s: Parsed file: %s successfully', who, bag.stepsFile)
           );
@@ -172,14 +171,25 @@ function _pollStatus(bag, next) {
         statusPoll.on('match', function (status) {
           logger.verbose(util.format('%s: Received %s status', who, status));
           if (bag.currentProcess) {
-            try {
-              bag.currentProcess.kill();
-            } catch (err) {
-              logger.warn(
-                util.format('%s: Failed to kill process with pid: %s' +
-                ' with error: %s', who, bag.currentProcess.pid, err)
-              );
-            }
+            __executeKillScript(bag.killScriptName,
+              function (err) {
+                if (err) {
+                  logger.warn(
+                    util.format('%s: Failed to execute container kill script ' +
+                    ':  %s with error code: %s', who, bag.killScriptName, err)
+                  );
+                } else {
+                  try {
+                    bag.currentProcess.kill();
+                  } catch (err) {
+                    logger.warn(
+                      util.format('%s: Failed to kill process with pid: %s' +
+                      ' with error: %s', who, bag.currentProcess.pid, err)
+                    );
+                  }
+                }
+              }
+            );
           }
         });
       }
@@ -195,10 +205,12 @@ function _executeSteps(bag, next) {
   logger.verbose(who, 'Inside');
 
   async.eachSeries(
-    bag.reqKickScriptNames,
-    function (scriptName, nextScriptName) {
+    bag.reqKickSteps,
+    function (step, nextStep) {
+      var taskScriptName = step.taskScript;
+      bag.killScriptName = step.killContainerScriptFileName || null;
       bag.currentProcess = spawn(global.config.reqExecBinPath, [
-        path.join(global.config.scriptsDir, scriptName),
+        path.join(global.config.scriptsDir, taskScriptName),
         global.config.jobENVPath
       ]);
 
@@ -227,9 +239,9 @@ function _executeSteps(bag, next) {
           if (exitCode || signal)
             bag.errors = bag.errors.concat(stdoutMsg);
           logger.verbose(util.format('%s: Script %s exited with exit code: ' +
-            '%s and signal: %s', who, scriptName, exitCode, signal)
+            '%s and signal: %s', who, taskScriptName, exitCode, signal)
           );
-          return nextScriptName(exitCode || signal);
+          return nextStep(exitCode || signal);
         }
       );
     },
@@ -355,4 +367,19 @@ function _pushErrorsToConsole(bag, next) {
   bag.consolesAdapter.closeGrp(false);
 
   return next();
+}
+
+function __executeKillScript(killScriptName, done) {
+  if (_.isEmpty(killScriptName)) return done();
+
+  var killProcess = spawn(global.config.reqExecBinPath, [
+    path.join(global.config.scriptsDir, killScriptName),
+    global.config.jobENVPath
+  ]);
+
+  killProcess.on('exit',
+    function (exitCode, signal) {
+      return done(exitCode || signal);
+    }
+  );
 }
