@@ -170,6 +170,10 @@ function _pollStatus(bag, next) {
       } else {
         statusPoll.on('match', function (status) {
           logger.verbose(util.format('%s: Received %s status', who, status));
+          var msg = util.format(
+            'Terminating the job because the status was: %s', status);
+          bag.consolesAdapter.openGrp(msg);
+          bag.consolesAdapter.closeGrp(true);
           if (bag.currentProcess) {
             __executeKillScript(bag.killScriptName,
               function (err) {
