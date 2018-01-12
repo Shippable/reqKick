@@ -212,7 +212,7 @@ function _executeSteps(bag, next) {
     bag.reqKickSteps,
     function (step, nextStep) {
       var taskScriptName = step.taskScript;
-      bag.killScriptName = step.killContainerScriptFileName || null;
+      bag.killScriptName = step.killScript || null;
       bag.currentProcess = spawn(global.config.reqExecBinPath, [
         path.join(global.config.scriptsDir, taskScriptName),
         global.config.jobENVPath
