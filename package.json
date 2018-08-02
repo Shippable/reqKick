@@ -11,6 +11,7 @@
   },
   "dependencies": {
     "async": "2.5.0",
+    "diskusage": "0.2.2",
     "dotenv": "4.0.0",
     "node-uuid": "1.4.8",
     "request": "2.83.0",
@@ -43,6 +44,6 @@
     "globalstrict": true,
     "maxcomplexity": 20,
     "maxstatements": 50,
-    "predef": ["logger", "util", "async", "_"]
+    "predef": ["logger"]
   }
 }
