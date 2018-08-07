@@ -23,6 +23,24 @@ ShippableAdapter.prototype.postBuildJobConsoles =
     );
   };
 
+ShippableAdapter.prototype.postClusterNodeStats =
+  function (json, callback) {
+    this.post(
+      util.format('/clusterNodeStats'),
+      json,
+      callback
+    );
+  };
+
+ShippableAdapter.prototype.postSystemNodeStats =
+  function (json, callback) {
+    this.post(
+      util.format('/systemNodeStats'),
+      json,
+      callback
+    );
+  };
+
 ShippableAdapter.prototype.post =
   function (relativeUrl, json, callback) {
     var bag = {};
