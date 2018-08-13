@@ -91,6 +91,7 @@ function __postNodeStats(bag, done) {
   async.series([
       __checkActiveContainers.bind(null, innerBag),
       __checkTotalContainers.bind(null, innerBag),
+      __checkImageCount.bind(null, innerBag),
       __checkMemoryUsage.bind(null, innerBag),
       __checkCpuUsage.bind(null, innerBag),
       __checkDiskUsage.bind(null, innerBag),
@@ -152,6 +153,29 @@ function __checkTotalContainers(bag, done) {
   );
 }
 
+function __checkImageCount(bag, done) {
+  var who = bag.who + '|' + __checkImageCount.name;
+  logger.debug(who, 'Inside');
+
+  var scriptPath = util.format('%s/%s/imageCount.%s',
+    global.config.shippableNodeArchitecture,
+    global.config.shippableNodeOperatingSystem,
+    global.config.scriptExtension);
+  scriptPath = path.resolve(__dirname, scriptPath);
+
+  var command = util.format('%s %s %s', global.config.defaultShell,
+    global.config.defaultShellArgs.join(' '), scriptPath);
+  exec(command,
+    function (err, stdout) {
+      if (err)
+        return done(err);
+
+      bag.imageCount = parseInt(stdout);
+      return done();
+    }
+  );
+}
+
 function __checkMemoryUsage(bag, done) {
   var who = bag.who + '|' + __checkMemoryUsage.name;
   logger.debug(who, 'Inside');
@@ -204,6 +228,7 @@ function __postClusterNodeStat(bag, done) {
     subscriptionId: global.config.subscriptionId,
     activeContainersCount: bag.activeContainersCount,
     totalContainersCount: bag.totalContainersCount,
+    imageCount: bag.imageCount,
     memoryUsageInPercentage: bag.memoryUsageInPercentage,
     cpuLoadInPercentage: bag.cpuLoadInPercentage,
     diskUsageInPercentage: bag.diskUsageInPercentage,
@@ -230,6 +255,7 @@ function __postSystemNodeStat(bag, done) {
   var systemNodeStat = {
     activeContainersCount: bag.activeContainersCount,
     totalContainersCount: bag.totalContainersCount,
+    imageCount: bag.imageCount,
     memoryUsageInPercentage: bag.memoryUsageInPercentage,
     cpuLoadInPercentage: bag.cpuLoadInPercentage,
     diskUsageInPercentage: bag.diskUsageInPercentage,
