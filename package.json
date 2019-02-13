@@ -18,7 +18,7 @@
     "winston": "2.4.0"
   },
   "devDependencies": {
-    "jshint": "2.9.5"
+    "jshint": "2.9.7"
   },
   "jshintConfig": {
     "node": true,
